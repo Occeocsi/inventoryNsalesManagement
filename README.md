@@ -1,1 +1,2 @@
 "# inventory-sales-management" 
+"# inventoryNsalesManagement" 
