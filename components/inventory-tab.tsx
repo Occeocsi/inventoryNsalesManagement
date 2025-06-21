@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Search, Edit, Trash2, AlertTriangle } from "lucide-react"
+import { Plus, Search, Edit, Trash2, AlertTriangle, Save, X } from "lucide-react"
 import { useDataStore, type Product } from "@/lib/data-store"
 
 export function InventoryTab() {
@@ -16,6 +16,8 @@ export function InventoryTab() {
   const [searchTerm, setSearchTerm] = useState("")
   const [newProduct, setNewProduct] = useState<Partial<Product>>({})
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<Partial<Product>>({})
 
   const filteredProducts = products.filter(
     (product) =>
@@ -29,6 +31,24 @@ export function InventoryTab() {
       setNewProduct({})
       setIsAddDialogOpen(false)
     }
+  }
+
+  const startEditing = (product: Product) => {
+    setEditingProduct(product.id)
+    setEditValues(product)
+  }
+
+  const saveEdit = () => {
+    if (editingProduct && editValues) {
+      updateProduct(editValues as Product)
+      setEditingProduct(null)
+      setEditValues({})
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingProduct(null)
+    setEditValues({})
   }
 
   const getStockStatus = (quantity: number, minStock: number) => {
@@ -159,30 +179,112 @@ export function InventoryTab() {
             <TableBody>
               {filteredProducts.map((product) => {
                 const status = getStockStatus(product.quantity, product.minStock)
+                const isEditing = editingProduct === product.id
+
                 return (
                   <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.sku}</TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell className="font-medium">
+                      {isEditing ? (
+                        <Input
+                          value={editValues.name || ""}
+                          onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={editValues.sku || ""}
+                          onChange={(e) => setEditValues({ ...editValues, sku: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.sku
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={editValues.category || ""}
+                          onChange={(e) => setEditValues({ ...editValues, category: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.category
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {product.quantity}
-                        {product.quantity <= product.minStock && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={editValues.quantity || ""}
+                            onChange={(e) =>
+                              setEditValues({ ...editValues, quantity: Number.parseInt(e.target.value) })
+                            }
+                            className="w-20"
+                          />
+                        ) : (
+                          <>
+                            {product.quantity}
+                            {product.quantity <= product.minStock && (
+                              <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            )}
+                          </>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell>${product.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editValues.price || ""}
+                          onChange={(e) => setEditValues({ ...editValues, price: Number.parseFloat(e.target.value) })}
+                          className="w-20"
+                        />
+                      ) : (
+                        `RM${product.price.toFixed(2)}`
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
-                    <TableCell>{product.supplier}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          value={editValues.supplier || ""}
+                          onChange={(e) => setEditValues({ ...editValues, supplier: e.target.value })}
+                          className="w-full"
+                        />
+                      ) : (
+                        product.supplier
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteProduct(product.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {isEditing ? (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={saveEdit}>
+                              <Save className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => startEditing(product)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteProduct(product.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle, ShoppingBag, Users } from "lucide-react"
@@ -34,19 +34,11 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = async (type: "customer" | "staff") => {
-    setError("")
-    const email = type === "customer" ? "customer@example.com" : "staff@example.com"
-    const password = "password123" // In a real app, we'd use a proper auth flow
-
-    await login(email, password)
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">In-Store Self-Service System</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Summy Service Store</CardTitle>
           <CardDescription className="text-center">
             {user ? `Welcome back, ${user.name}` : "Scan items and complete your purchase"}
           </CardDescription>
@@ -107,7 +99,7 @@ export default function LoginPage() {
                 </TabsTrigger>
                 <TabsTrigger value="staff" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Staff Assist
+                  Staff Login
                 </TabsTrigger>
               </TabsList>
 
@@ -125,7 +117,7 @@ export default function LoginPage() {
                     <Input
                       id="customer-email"
                       type="email"
-                      placeholder="customer@example.com"
+                      placeholder="customer@gmail.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -136,7 +128,7 @@ export default function LoginPage() {
                     <Input
                       id="customer-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
@@ -151,16 +143,6 @@ export default function LoginPage() {
                     ) : (
                       "Sign In"
                     )}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleDemoLogin("customer")}
-                    disabled={isLoading}
-                  >
-                    Demo Customer Login
                   </Button>
                 </form>
               </TabsContent>
@@ -179,7 +161,7 @@ export default function LoginPage() {
                     <Input
                       id="staff-email"
                       type="email"
-                      placeholder="staff@example.com"
+                      placeholder="staff1@gmail.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -190,7 +172,7 @@ export default function LoginPage() {
                     <Input
                       id="staff-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
@@ -206,30 +188,11 @@ export default function LoginPage() {
                       "Sign In"
                     )}
                   </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleDemoLogin("staff")}
-                    disabled={isLoading}
-                  >
-                    Demo Staff Login
-                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
           )}
         </CardContent>
-        {!user && (
-          <CardFooter className="flex flex-col space-y-2">
-            <div className="text-sm text-muted-foreground text-center">
-              <p>Self-Checkout: customer@example.com</p>
-              <p>Staff Terminal: staff@example.com</p>
-              <p className="text-xs mt-1">(Any password will work for demo)</p>
-            </div>
-          </CardFooter>
-        )}
       </Card>
     </div>
   )

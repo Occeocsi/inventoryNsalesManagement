@@ -9,35 +9,51 @@ export interface User {
   avatar?: string
 }
 
-// Mock user data
-export const MOCK_USERS: User[] = [
+// Updated user credentials
+const VALID_CREDENTIALS = [
   {
-    id: "staff-1",
-    email: "staff@example.com",
-    name: "Admin Staff",
-    role: "staff",
-    avatar: "/placeholder.svg?height=40&width=40",
+    email: "customer@gmail.com",
+    password: "cust123",
+    user: {
+      id: "customer-1",
+      email: "customer@gmail.com",
+      name: "Customer User",
+      role: "customer" as const,
+      avatar: "/placeholder.svg?height=40&width=40",
+    },
   },
   {
-    id: "staff-2",
-    email: "manager@example.com",
-    name: "Store Manager",
-    role: "staff",
-    avatar: "/placeholder.svg?height=40&width=40",
+    email: "staff1@gmail.com",
+    password: "staff123",
+    user: {
+      id: "staff-1",
+      email: "staff1@gmail.com",
+      name: "Staff Member 1",
+      role: "staff" as const,
+      avatar: "/placeholder.svg?height=40&width=40",
+    },
   },
   {
-    id: "customer-1",
-    email: "customer@example.com",
-    name: "John Customer",
-    role: "customer",
-    avatar: "/placeholder.svg?height=40&width=40",
+    email: "staff2@gmail.com",
+    password: "staff123",
+    user: {
+      id: "staff-2",
+      email: "staff2@gmail.com",
+      name: "Staff Member 2",
+      role: "staff" as const,
+      avatar: "/placeholder.svg?height=40&width=40",
+    },
   },
   {
-    id: "customer-2",
-    email: "jane@example.com",
-    name: "Jane Smith",
-    role: "customer",
-    avatar: "/placeholder.svg?height=40&width=40",
+    email: "staff3@gmail.com",
+    password: "staff123",
+    user: {
+      id: "staff-3",
+      email: "staff3@gmail.com",
+      name: "Staff Member 3",
+      role: "staff" as const,
+      avatar: "/placeholder.svg?height=40&width=40",
+    },
   },
 ]
 
@@ -84,13 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API call delay
       await new Promise((resolve) => setTimeout(resolve, 800))
 
-      // Find user by email (in a real app, we'd validate password too)
-      const foundUser = MOCK_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase())
+      // Find matching credentials
+      const credential = VALID_CREDENTIALS.find(
+        (cred) => cred.email.toLowerCase() === email.toLowerCase() && cred.password === password,
+      )
 
-      if (foundUser) {
-        setUser(foundUser)
+      if (credential) {
+        setUser(credential.user)
         if (isClient) {
-          localStorage.setItem("user", JSON.stringify(foundUser))
+          localStorage.setItem("user", JSON.stringify(credential.user))
         }
         setIsLoading(false)
         return true

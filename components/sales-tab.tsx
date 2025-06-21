@@ -125,7 +125,7 @@ export function SalesTab() {
                     <SelectContent>
                       {products.map((product) => (
                         <SelectItem key={product.id} value={`${product.name}|1`}>
-                          {product.name} - ${product.price}
+                          {product.name} - RM{product.price}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -149,14 +149,14 @@ export function SalesTab() {
                           <TableRow key={index}>
                             <TableCell>{item.productName}</TableCell>
                             <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.price.toFixed(2)}</TableCell>
-                            <TableCell>${(item.quantity * item.price).toFixed(2)}</TableCell>
+                            <TableCell>RM{item.price.toFixed(2)}</TableCell>
+                            <TableCell>RM{(item.quantity * item.price).toFixed(2)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                     <div className="mt-4 text-right">
-                      <strong>Total: ${calculateTotal(newSale.items).toFixed(2)}</strong>
+                      <strong>Total: RM{calculateTotal(newSale.items).toFixed(2)}</strong>
                     </div>
                   </div>
                 )}
@@ -176,7 +176,7 @@ export function SalesTab() {
             <CardTitle>Today's Sales</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${sales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)}</div>
+            <div className="text-2xl font-bold">RM{sales.reduce((sum, sale) => sum + sale.total, 0).toFixed(2)}</div>
             <p className="text-sm text-muted-foreground">{sales.length} transactions</p>
           </CardContent>
         </Card>
@@ -187,7 +187,7 @@ export function SalesTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              $
+              RM
               {sales.length > 0 ? (sales.reduce((sum, sale) => sum + sale.total, 0) / sales.length).toFixed(2) : "0.00"}
             </div>
             <p className="text-sm text-muted-foreground">Per transaction</p>
@@ -231,7 +231,7 @@ export function SalesTab() {
                   <TableCell>{sale.date}</TableCell>
                   <TableCell>{sale.customer}</TableCell>
                   <TableCell>{sale.items.length} items</TableCell>
-                  <TableCell>${sale.total.toFixed(2)}</TableCell>
+                  <TableCell>RM{sale.total.toFixed(2)}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${

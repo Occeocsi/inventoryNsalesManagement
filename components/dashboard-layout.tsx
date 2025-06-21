@@ -6,7 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
         <div className="flex flex-col flex-grow border-r border-gray-200 bg-white pt-5 overflow-y-auto">
           <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold">Self-Service Store</h1>
+            <h1 className="text-xl font-bold">Summy Self-Service System</h1>
           </div>
           <div className="mt-8 flex-grow flex flex-col">
             <nav className="flex-1 px-2 pb-4 space-y-1">
@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetContent side="left" className="w-[240px] sm:w-[240px]">
           <SheetHeader>
-            <SheetTitle>Self-Service Store</SheetTitle>
+            <SheetTitle>Summy Self-Service System</SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col gap-2 mt-8">
             {navigation.map((item) => {
@@ -159,7 +159,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   >
                     <span className="sr-only">Open user menu</span>
                     <Avatar>
-                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
+                      {/* Remove the <AvatarImage> to avoid broken image requests */}
                       <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </Button>
