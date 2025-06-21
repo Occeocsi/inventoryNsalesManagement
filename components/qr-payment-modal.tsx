@@ -76,7 +76,7 @@ export function QrPaymentModal({ open, onOpenChange, amount, onPaymentComplete, 
               <div className="relative border-4 border-pink-500 rounded-lg p-2 bg-white">
                 <Image
                   src="/images/malaysia-national-qr.png"
-                  alt="Malaysia National QR Payment"
+                  alt="QR"
                   width={250}
                   height={250}
                   className="mx-auto"
