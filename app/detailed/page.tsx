@@ -19,15 +19,24 @@ import {
   Tooltip,
   Legend,
 } from "recharts"
-import { FileText, Users, BarChart3, RefreshCw } from "lucide-react"
-import { processAttendanceHistory, type ProcessedAttendanceData } from "@/lib/attendance-processor"
-import type { DailyAttendanceEntry } from "@/app/attendance/page"
+import { FileText, Users, TrendingUp, BarChart3 } from "lucide-react"
 
 interface Student {
   id: number
   nama: string
   noMatrik: string
   kelas: string
+}
+
+interface AttendanceData {
+  studentId: number
+  studentName: string
+  bm: number
+  bi: number
+  math: number
+  robotic: number
+  totalAttendance: number
+  averageAttendance: number
 }
 
 const subjects = [
@@ -41,18 +50,13 @@ const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
 
 export default function MaklumatTerperinci() {
   const [students, setStudents] = useState<Student[]>([])
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("")
-  const [attendanceData, setAttendanceData] = useState<ProcessedAttendanceData[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<string>("")
+  const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([])
 
   useEffect(() => {
     loadStudents()
+    generateAttendanceData()
   }, [])
-
-  useEffect(() => {
-    if (students.length > 0) {
-      generateAttendanceData()
-    }
-  }, [students])
 
   const loadStudents = () => {
     if (typeof window !== "undefined") {
@@ -63,16 +67,39 @@ export default function MaklumatTerperinci() {
 
   const generateAttendanceData = () => {
     if (typeof window === "undefined") {
-      return
+      return [] as AttendanceData[]
     }
-    const dailyHistory: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("dailyAttendanceHistory") || "[]")
-    const processed = processAttendanceHistory(dailyHistory, students)
-    setAttendanceData(processed)
+    const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
+
+    // Generate sample attendance data for each student
+    const attendanceData: AttendanceData[] = savedStudents.map((student: Student) => {
+      // Generate random attendance percentages for each subject (70-100%)
+      const bm = Math.floor(Math.random() * 31) + 70
+      const bi = Math.floor(Math.random() * 31) + 70
+      const math = Math.floor(Math.random() * 31) + 70
+      const robotic = Math.floor(Math.random() * 31) + 70
+
+      const totalAttendance = bm + bi + math + robotic
+      const averageAttendance = Math.round(totalAttendance / 4)
+
+      return {
+        studentId: student.id,
+        studentName: student.nama,
+        bm,
+        bi,
+        math,
+        robotic,
+        totalAttendance,
+        averageAttendance,
+      }
+    })
+
+    setAttendanceData(attendanceData)
   }
 
   const getSelectedStudentData = () => {
-    if (!selectedStudentId) return null
-    return attendanceData.find((data) => data.studentId.toString() === selectedStudentId)
+    if (!selectedStudent) return null
+    return attendanceData.find((data) => data.studentId.toString() === selectedStudent)
   }
 
   const getPieChartData = () => {
@@ -161,7 +188,7 @@ export default function MaklumatTerperinci() {
             <CardContent>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
                     <SelectTrigger className="h-12">
                       <SelectValue placeholder="Pilih pelajar untuk melihat graf kehadiran" />
                     </SelectTrigger>
@@ -175,7 +202,7 @@ export default function MaklumatTerperinci() {
                   </Select>
                 </div>
                 <Button onClick={generateAttendanceData} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <TrendingUp className="h-4 w-4 mr-2" />
                   Refresh Data
                 </Button>
               </div>
@@ -257,7 +284,7 @@ export default function MaklumatTerperinci() {
                 </Button>
               </CardContent>
             </Card>
-          ) : !selectedStudentId ? (
+          ) : !selectedStudent ? (
             <Card className="shadow-lg">
               <CardContent className="p-8 text-center">
                 <div className="text-gray-500 mb-4">
@@ -367,7 +394,6 @@ export default function MaklumatTerperinci() {
                     <div className="text-sm space-y-1">
                       {(() => {
                         const data = getScatterData()
-                        if (data.length === 0) return <p>No data available for analysis.</p>
                         const highest = data.reduce((prev, current) =>
                           prev.kehadiran > current.kehadiran ? prev : current,
                         )

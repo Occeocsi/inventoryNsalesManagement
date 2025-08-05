@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
@@ -14,19 +14,12 @@ interface Student {
   kelas: string
 }
 
-// Represents attendance for a single student for all subjects on a specific day
-interface StudentDailyAttendance {
+interface AttendanceRecord {
   studentId: number
   bm: boolean
   bi: boolean
   math: boolean
   robotic: boolean
-}
-
-// Represents all attendance records for a specific date
-export interface DailyAttendanceEntry {
-  date: string // YYYY-MM-DD
-  records: StudentDailyAttendance[]
 }
 
 const subjects = [
@@ -39,7 +32,7 @@ const subjects = [
 export default function Kehadiran() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
   const [students, setStudents] = useState<Student[]>([])
-  const [attendance, setAttendance] = useState<StudentDailyAttendance[]>([]) // Current day's attendance
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [isSaving, setIsSaving] = useState(false)
 
   // Load students from localStorage on component mount
@@ -53,40 +46,22 @@ export default function Kehadiran() {
     loadStudents()
   }, [])
 
-  // Load attendance for the selected date or initialize if new date/students
+  // Initialize attendance when students are loaded
   useEffect(() => {
-    if (typeof window === "undefined" || students.length === 0) return
-
-    const loadAttendanceForDate = () => {
-      const history: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("dailyAttendanceHistory") || "[]")
-      const existingEntry = history.find((entry) => entry.date === selectedDate)
-
-      if (existingEntry) {
-        // If entry exists, use its records and ensure all current students are covered
-        const loadedRecordsMap = new Map(existingEntry.records.map((rec) => [rec.studentId, rec]))
-        const currentDayAttendance = students.map((student) => {
-          const existingRecord = loadedRecordsMap.get(student.id)
-          return existingRecord || { studentId: student.id, bm: true, bi: true, math: true, robotic: true } // Default to present if no record
-        })
-        setAttendance(currentDayAttendance)
-      } else {
-        // If no entry, initialize all students as present
-        setAttendance(
-          students.map((student) => ({
-            studentId: student.id,
-            bm: true,
-            bi: true,
-            math: true,
-            robotic: true,
-          })),
-        )
-      }
+    if (students.length > 0) {
+      setAttendance(
+        students.map((student) => ({
+          studentId: student.id,
+          bm: true,
+          bi: true,
+          math: true,
+          robotic: true,
+        })),
+      )
     }
+  }, [students])
 
-    loadAttendanceForDate()
-  }, [selectedDate, students]) // Re-run when date or students change
-
-  const toggleAttendance = (studentId: number, subject: keyof Omit<StudentDailyAttendance, "studentId">) => {
+  const toggleAttendance = (studentId: number, subject: keyof Omit<AttendanceRecord, "studentId">) => {
     setAttendance((prev) =>
       prev.map((record) => (record.studentId === studentId ? { ...record, [subject]: !record[subject] } : record)),
     )
@@ -94,48 +69,22 @@ export default function Kehadiran() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    if (typeof window !== "undefined") {
-      const history: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("dailyAttendanceHistory") || "[]")
-      const newEntry: DailyAttendanceEntry = {
-        date: selectedDate,
-        records: attendance,
-      }
-
-      const existingIndex = history.findIndex((entry) => entry.date === selectedDate)
-
-      if (existingIndex !== -1) {
-        history[existingIndex] = newEntry // Update existing entry
-      } else {
-        history.push(newEntry) // Add new entry
-      }
-
-      localStorage.setItem("dailyAttendanceHistory", JSON.stringify(history))
-    }
-
+    // Simulate saving
     setTimeout(() => {
       setIsSaving(false)
       alert(`Kehadiran untuk tarikh ${selectedDate} berjaya disimpan!`)
-    }, 1500)
+    }, 2000)
   }
 
   const getAttendanceForStudent = (studentId: number) => {
     return attendance.find((record) => record.studentId === studentId)
   }
 
-  const getAttendanceStats = useCallback(() => {
+  const getAttendanceStats = () => {
     const totalStudents = students.length
-    if (totalStudents === 0) {
-      return subjects.map((subject) => ({
-        subject: subject.name,
-        present: 0,
-        absent: 0,
-        percentage: 0,
-      }))
-    }
-
     const stats = subjects.map((subject) => {
       const presentCount = attendance.filter(
-        (record) => record[subject.code as keyof Omit<StudentDailyAttendance, "studentId">],
+        (record) => record[subject.code as keyof Omit<AttendanceRecord, "studentId">],
       ).length
       return {
         subject: subject.name,
@@ -145,7 +94,7 @@ export default function Kehadiran() {
       }
     })
     return stats
-  }, [students, attendance])
+  }
 
   return (
     <DashboardLayout>
@@ -279,18 +228,16 @@ export default function Kehadiran() {
                                   onClick={() =>
                                     toggleAttendance(
                                       student.id,
-                                      subject.code as keyof Omit<StudentDailyAttendance, "studentId">,
+                                      subject.code as keyof Omit<AttendanceRecord, "studentId">,
                                     )
                                   }
                                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                                    studentAttendance?.[subject.code as keyof Omit<StudentDailyAttendance, "studentId">]
+                                    studentAttendance?.[subject.code as keyof Omit<AttendanceRecord, "studentId">]
                                       ? "bg-green-100 text-green-600 hover:bg-green-200"
                                       : "bg-red-100 text-red-600 hover:bg-red-200"
                                   }`}
                                 >
-                                  {studentAttendance?.[
-                                    subject.code as keyof Omit<StudentDailyAttendance, "studentId">
-                                  ] ? (
+                                  {studentAttendance?.[subject.code as keyof Omit<AttendanceRecord, "studentId">] ? (
                                     <Check className="h-5 w-5" />
                                   ) : (
                                     <X className="h-5 w-5" />
