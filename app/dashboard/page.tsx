@@ -21,22 +21,14 @@ import {
   ReferenceLine,
 } from "recharts"
 import { TrendingUp, BarChart3, RefreshCw } from "lucide-react"
+import { processAttendanceHistory, type ProcessedAttendanceData } from "@/lib/attendance-processor"
+import type { DailyAttendanceEntry } from "@/app/attendance/page"
 
 interface Student {
   id: number
   nama: string
   noMatrik: string
   kelas: string
-}
-
-interface AttendanceData {
-  studentId: number
-  studentName: string
-  bm: number
-  bi: number
-  math: number
-  robotic: number
-  averageAttendance: number
 }
 
 const subjects = [
@@ -50,18 +42,22 @@ const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
 
 export default function Dashboard() {
   const [students, setStudents] = useState<Student[]>([])
-  const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([])
-  const [selectedSubject, setSelectedSubject] = useState<string>("all")
+  const [attendanceData, setAttendanceData] = useState<ProcessedAttendanceData[]>([])
+  const [selectedSubject, setSelectedSubject] = useState<string>("bm-bi") // Default to BM vs BI
   const [highlightedStudent, setHighlightedStudent] = useState<number | null>(null)
 
   useEffect(() => {
     loadStudents()
-    generateAttendanceData()
   }, [])
+
+  useEffect(() => {
+    if (students.length > 0) {
+      generateAttendanceData()
+    }
+  }, [students])
 
   const loadStudents = () => {
     if (typeof window !== "undefined") {
-      // Guard localStorage access
       const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
       setStudents(savedStudents)
     }
@@ -69,34 +65,11 @@ export default function Dashboard() {
 
   const generateAttendanceData = () => {
     if (typeof window === "undefined") {
-      // Guard localStorage access
-      return [] as AttendanceData[]
+      return
     }
-    const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
-
-    // Generate realistic attendance data for each student
-    const attendanceData: AttendanceData[] = savedStudents.map((student: Student) => {
-      // Generate correlated attendance percentages (students good at one subject tend to be good at others)
-      const basePerformance = Math.random() * 40 + 60 // 60-100% base
-      const bm = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 20))
-      const bi = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 20))
-      const math = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 25))
-      const robotic = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 30))
-
-      const averageAttendance = Math.round((bm + bi + math + robotic) / 4)
-
-      return {
-        studentId: student.id,
-        studentName: student.nama,
-        bm: Math.round(bm),
-        bi: Math.round(bi),
-        math: Math.round(math),
-        robotic: Math.round(robotic),
-        averageAttendance,
-      }
-    })
-
-    setAttendanceData(attendanceData)
+    const dailyHistory: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("dailyAttendanceHistory") || "[]")
+    const processed = processAttendanceHistory(dailyHistory, students)
+    setAttendanceData(processed)
   }
 
   // Prepare pie chart data
@@ -122,26 +95,13 @@ export default function Dashboard() {
     ]
   }
 
-  // Prepare scatter plot data
-  const getScatterData = () => {
-    if (attendanceData.length === 0) return []
-
-    return attendanceData.map((student) => ({
-      x: student.bm, // X-axis: Bahasa Malaysia
-      y: student.bi, // Y-axis: Bahasa Inggeris
-      math: student.math,
-      robotic: student.robotic,
-      name: student.studentName,
-      id: student.studentId,
-      average: student.averageAttendance,
-    }))
-  }
-
   // Get correlation data for different subject pairs
-  const getCorrelationData = (subjectX: string, subjectY: string) => {
+  const getCorrelationData = (subjectX: keyof ProcessedAttendanceData, subjectY: keyof ProcessedAttendanceData) => {
     return attendanceData.map((student) => ({
-      x: student[subjectX as keyof AttendanceData] as number,
-      y: student[subjectY as keyof AttendanceData] as number,
+      x: student[subjectX] as number,
+      y: student[subjectY] as number,
+      math: student.math, // Include other subjects for tooltip if needed
+      robotic: student.robotic,
       name: student.studentName,
       id: student.studentId,
       average: student.averageAttendance,
@@ -159,7 +119,7 @@ export default function Dashboard() {
       case "bi-robotic":
         return getCorrelationData("bi", "robotic")
       default:
-        return getScatterData()
+        return getCorrelationData("bm", "bi") // Default
     }
   }
 
@@ -318,7 +278,6 @@ export default function Dashboard() {
                           <SelectValue placeholder="Pilih perbandingan subjek" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">BM vs BI (Default)</SelectItem>
                           <SelectItem value="bm-bi">Bahasa Malaysia vs Bahasa Inggeris</SelectItem>
                           <SelectItem value="math-robotic">Matematik vs Robotik</SelectItem>
                           <SelectItem value="bm-math">Bahasa Malaysia vs Matematik</SelectItem>
@@ -414,13 +373,13 @@ export default function Dashboard() {
                           <XAxis
                             type="number"
                             dataKey="x"
-                            domain={[40, 100]}
+                            domain={[0, 100]} // Adjusted domain to 0-100
                             label={{ value: getScatterLabels().x, position: "insideBottom", offset: -10 }}
                           />
                           <YAxis
                             type="number"
                             dataKey="y"
-                            domain={[40, 100]}
+                            domain={[0, 100]} // Adjusted domain to 0-100
                             label={{ value: getScatterLabels().y, angle: -90, position: "insideLeft" }}
                           />
                           <Tooltip content={<CustomTooltip />} />
