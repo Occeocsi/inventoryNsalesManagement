@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, Briefcase, GraduationCap, Award, ArrowLeft, FileText } from "lucide-react"
+import { User, Briefcase, GraduationCap, Award, ArrowLeft, FileText } from 'lucide-react'
 
 interface Staff {
   id: number
@@ -15,6 +15,7 @@ interface Staff {
   pengalamanKerja: string
   staffId: string
   createdAt: string
+  gambar?: string // Added gambar field for Base64 image
 }
 
 interface TeacherSelectionProps {
@@ -84,9 +85,17 @@ export function TeacherSelection({ onBack }: TeacherSelectionProps) {
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-6">
               <div className="flex items-start gap-6">
                 {/* Profile Picture Placeholder */}
-                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                  <User className="h-12 w-12 text-gray-400" />
-                </div>
+                {selectedTeacher.gambar ? (
+                  <img
+                    src={selectedTeacher.gambar || "/placeholder.svg"}
+                    alt={selectedTeacher.nama}
+                    className="h-24 w-24 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
 
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -201,9 +210,17 @@ export function TeacherSelection({ onBack }: TeacherSelectionProps) {
                 >
                   <CardContent className="p-6 text-center">
                     {/* Profile Picture Placeholder */}
-                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <User className="h-10 w-10 text-gray-400" />
-                    </div>
+                    {teacher.gambar ? (
+                      <img
+                        src={teacher.gambar || "/placeholder.svg"}
+                        alt={teacher.nama}
+                        className="h-20 w-20 rounded-full object-cover mx-auto mb-4"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <User className="h-10 w-10 text-gray-400" />
+                      </div>
+                    )}
 
                     {/* Teacher Info */}
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">{teacher.nama}</h3>

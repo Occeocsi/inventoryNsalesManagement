@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, Briefcase, GraduationCap, Trash2, Edit } from "lucide-react"
+import { User, Briefcase, GraduationCap, Trash2, Edit } from 'lucide-react'
 
 interface Staff {
   id: number
@@ -15,7 +15,8 @@ interface Staff {
   pengalamanKerja: string
   staffId: string
   createdAt: string
-  icNo: string // Added icNo field
+  icNo?: string // Added icNo field
+  gambar?: string // Added gambar field for Base64 image
 }
 
 export function StaffList() {
@@ -91,6 +92,13 @@ export function StaffList() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
+                    {member.gambar ? (
+                      <img src={member.gambar || "/placeholder.svg"} alt={member.nama} className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
                     <h3 className="text-lg font-semibold text-gray-900">{member.nama}</h3>
                     <Badge variant="outline">{member.staffId}</Badge>
                     <Badge className={getJawatanColor(member.jawatanGred)}>{formatJawatan(member.jawatanGred)}</Badge>
@@ -99,7 +107,7 @@ export function StaffList() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      <span>IC: {member.icNo}</span>
+                      <span>IC: {member.icNo || "N/A"}</span>
                     </div>
                   </div>
 

@@ -1,25 +1,12 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ReferenceLine,
-} from "recharts"
+import { PieChart } from "@/components/PieChart"
+import { ScatterPlot } from "@/components/ScatterPlot"
 import { TrendingUp, BarChart3, RefreshCw } from "lucide-react"
 
 interface Student {
@@ -39,19 +26,24 @@ interface AttendanceData {
   averageAttendance: number
 }
 
-const subjects = [
-  { code: "bm", name: "Bahasa Malaysia", color: "#3b82f6" },
-  { code: "bi", name: "Bahasa Inggeris", color: "#10b981" },
-  { code: "math", name: "Matematik", color: "#8b5cf6" },
-  { code: "robotic", name: "Robotik", color: "#f59e0b" },
-]
+interface DailyAttendanceEntry {
+  date: string
+  records: {
+    studentId: number
+    bm: boolean
+    bi: boolean
+    math: boolean
+    robotic: boolean
+  }[]
+}
 
 const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
+const SUBJECT_CODES = ["bm", "bi", "math", "robotic"]
 
 export default function Dashboard() {
   const [students, setStudents] = useState<Student[]>([])
   const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([])
-  const [selectedSubject, setSelectedSubject] = useState<string>("all")
+  const [selectedSubjectComparison, setSelectedSubjectComparison] = useState<string>("bm-bi")
   const [highlightedStudent, setHighlightedStudent] = useState<number | null>(null)
 
   useEffect(() => {
@@ -61,159 +53,63 @@ export default function Dashboard() {
 
   const loadStudents = () => {
     if (typeof window !== "undefined") {
-      // Guard localStorage access
       const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
       setStudents(savedStudents)
     }
   }
 
   const generateAttendanceData = () => {
-    if (typeof window === "undefined") {
-      // Guard localStorage access
-      return [] as AttendanceData[]
-    }
-    const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
+    if (typeof window === "undefined") return
 
-    // Generate realistic attendance data for each student
-    const attendanceData: AttendanceData[] = savedStudents.map((student: Student) => {
-      // Generate correlated attendance percentages (students good at one subject tend to be good at others)
-      const basePerformance = Math.random() * 40 + 60 // 60-100% base
-      const bm = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 20))
-      const bi = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 20))
-      const math = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 25))
-      const robotic = Math.max(50, Math.min(100, basePerformance + (Math.random() - 0.5) * 30))
+    const savedStudents: Student[] = JSON.parse(localStorage.getItem("students") || "[]")
+    const allDailyRecords: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("daily_attendance_records") || "[]")
 
-      const averageAttendance = Math.round((bm + bi + math + robotic) / 4)
+    const calculatedAttendanceData: AttendanceData[] = savedStudents.map((student) => {
+      let totalBmClasses = 0
+      let attendedBmClasses = 0
+      let totalBiClasses = 0
+      let attendedBiClasses = 0
+      let totalMathClasses = 0
+      let attendedMathClasses = 0
+      let totalRoboticClasses = 0
+      let attendedRoboticClasses = 0
+
+      allDailyRecords.forEach((dailyEntry) => {
+        const studentRecord = dailyEntry.records.find((rec) => rec.studentId === student.id)
+        if (studentRecord) {
+          totalBmClasses++
+          if (studentRecord.bm) attendedBmClasses++
+          totalBiClasses++
+          if (studentRecord.bi) attendedBiClasses++
+          totalMathClasses++
+          if (studentRecord.math) attendedMathClasses++
+          totalRoboticClasses++
+          if (studentRecord.robotic) attendedRoboticClasses++
+        }
+      })
+
+      const bmPercentage = totalBmClasses > 0 ? (attendedBmClasses / totalBmClasses) * 100 : 0
+      const biPercentage = totalBiClasses > 0 ? (attendedBiClasses / totalBiClasses) * 100 : 0
+      const mathPercentage = totalMathClasses > 0 ? (attendedMathClasses / totalMathClasses) * 100 : 0
+      const roboticPercentage = totalRoboticClasses > 0 ? (attendedRoboticClasses / totalRoboticClasses) * 100 : 0
+
+      const overallTotalClasses = totalBmClasses + totalBiClasses + totalMathClasses + totalRoboticClasses
+      const overallAttendedClasses =
+        attendedBmClasses + attendedBiClasses + attendedMathClasses + attendedRoboticClasses
+      const averageAttendance = overallTotalClasses > 0 ? (overallAttendedClasses / overallTotalClasses) * 100 : 0
 
       return {
         studentId: student.id,
         studentName: student.nama,
-        bm: Math.round(bm),
-        bi: Math.round(bi),
-        math: Math.round(math),
-        robotic: Math.round(robotic),
-        averageAttendance,
+        bm: Math.round(bmPercentage),
+        bi: Math.round(biPercentage),
+        math: Math.round(mathPercentage),
+        robotic: Math.round(roboticPercentage),
+        averageAttendance: Math.round(averageAttendance),
       }
     })
 
-    setAttendanceData(attendanceData)
-  }
-
-  // Prepare pie chart data
-  const getPieChartData = () => {
-    if (attendanceData.length === 0) return []
-
-    const totals = attendanceData.reduce(
-      (acc, student) => ({
-        bm: acc.bm + student.bm,
-        bi: acc.bi + student.bi,
-        math: acc.math + student.math,
-        robotic: acc.robotic + student.robotic,
-      }),
-      { bm: 0, bi: 0, math: 0, robotic: 0 },
-    )
-
-    const count = attendanceData.length
-    return [
-      { name: "Bahasa Malaysia", value: Math.round(totals.bm / count), color: COLORS[0] },
-      { name: "Bahasa Inggeris", value: Math.round(totals.bi / count), color: COLORS[1] },
-      { name: "Matematik", value: Math.round(totals.math / count), color: COLORS[2] },
-      { name: "Robotik", value: Math.round(totals.robotic / count), color: COLORS[3] },
-    ]
-  }
-
-  // Prepare scatter plot data
-  const getScatterData = () => {
-    if (attendanceData.length === 0) return []
-
-    return attendanceData.map((student) => ({
-      x: student.bm, // X-axis: Bahasa Malaysia
-      y: student.bi, // Y-axis: Bahasa Inggeris
-      math: student.math,
-      robotic: student.robotic,
-      name: student.studentName,
-      id: student.studentId,
-      average: student.averageAttendance,
-    }))
-  }
-
-  // Get correlation data for different subject pairs
-  const getCorrelationData = (subjectX: string, subjectY: string) => {
-    return attendanceData.map((student) => ({
-      x: student[subjectX as keyof AttendanceData] as number,
-      y: student[subjectY as keyof AttendanceData] as number,
-      name: student.studentName,
-      id: student.studentId,
-      average: student.averageAttendance,
-    }))
-  }
-
-  const getCurrentScatterData = () => {
-    switch (selectedSubject) {
-      case "bm-bi":
-        return getCorrelationData("bm", "bi")
-      case "math-robotic":
-        return getCorrelationData("math", "robotic")
-      case "bm-math":
-        return getCorrelationData("bm", "math")
-      case "bi-robotic":
-        return getCorrelationData("bi", "robotic")
-      default:
-        return getScatterData()
-    }
-  }
-
-  const getScatterLabels = () => {
-    switch (selectedSubject) {
-      case "bm-bi":
-        return { x: "Bahasa Malaysia (%)", y: "Bahasa Inggeris (%)" }
-      case "math-robotic":
-        return { x: "Matematik (%)", y: "Robotik (%)" }
-      case "bm-math":
-        return { x: "Bahasa Malaysia (%)", y: "Matematik (%)" }
-      case "bi-robotic":
-        return { x: "Bahasa Inggeris (%)", y: "Robotik (%)" }
-      default:
-        return { x: "Bahasa Malaysia (%)", y: "Bahasa Inggeris (%)" }
-    }
-  }
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-semibold">{data.name}</p>
-          <p className="text-blue-600">{`${getScatterLabels().x}: ${data.x}%`}</p>
-          <p className="text-green-600">{`${getScatterLabels().y}: ${data.y}%`}</p>
-          <p className="text-gray-600">{`Purata: ${data.average}%`}</p>
-        </div>
-      )
-    }
-    return null
-  }
-
-  const PieTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-semibold">{payload[0].name}</p>
-          <p className="text-blue-600">{`Purata Kehadiran: ${payload[0].value}%`}</p>
-        </div>
-      )
-    }
-    return null
-  }
-
-  const handlePieClick = (data: any) => {
-    // When pie chart is clicked, highlight related data in scatter plot
-    console.log("Pie clicked:", data.name)
-  }
-
-  const handleScatterClick = (data: any) => {
-    // When scatter plot point is clicked, highlight the student
-    setHighlightedStudent(data.id)
-    setTimeout(() => setHighlightedStudent(null), 3000) // Clear highlight after 3 seconds
+    setAttendanceData(calculatedAttendanceData)
   }
 
   const getOverallStats = () => {
@@ -289,7 +185,6 @@ export default function Dashboard() {
           </div>
 
           {students.length === 0 ? (
-            /* No Data State */
             <Card className="shadow-lg">
               <CardContent className="p-8 text-center">
                 <div className="text-gray-500 mb-4">
@@ -313,12 +208,11 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <h3 className="font-semibold text-gray-900">Analisis Kehadiran Interaktif</h3>
-                      <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                      <Select value={selectedSubjectComparison} onValueChange={setSelectedSubjectComparison}>
                         <SelectTrigger className="w-64">
                           <SelectValue placeholder="Pilih perbandingan subjek" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">BM vs BI (Default)</SelectItem>
                           <SelectItem value="bm-bi">Bahasa Malaysia vs Bahasa Inggeris</SelectItem>
                           <SelectItem value="math-robotic">Matematik vs Robotik</SelectItem>
                           <SelectItem value="bm-math">Bahasa Malaysia vs Matematik</SelectItem>
@@ -346,46 +240,15 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={getPieChartData()}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, value }) => `${name}: ${value}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            onClick={handlePieClick}
-                          >
-                            {getPieChartData().map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                                style={{ cursor: "pointer" }}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<PieTooltip />} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Pie Chart Summary */}
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Ringkasan Prestasi:</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        {getPieChartData().map((item, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }}></div>
-                            <span className="text-xs">
-                              {item.name}: {item.value}%
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <PieChart
+                        data={attendanceData}
+                        colors={COLORS}
+                        onSegmentClick={(subject) => {
+                          // This can be used to update the scatter plot or other components
+                          // For now, it just logs the clicked subject
+                          console.log(`Clicked on subject: ${subject}`)
+                        }}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -400,87 +263,12 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ScatterChart
-                          data={getCurrentScatterData()}
-                          margin={{
-                            top: 20,
-                            right: 20,
-                            bottom: 20,
-                            left: 20,
-                          }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis
-                            type="number"
-                            dataKey="x"
-                            domain={[40, 100]}
-                            label={{ value: getScatterLabels().x, position: "insideBottom", offset: -10 }}
-                          />
-                          <YAxis
-                            type="number"
-                            dataKey="y"
-                            domain={[40, 100]}
-                            label={{ value: getScatterLabels().y, angle: -90, position: "insideLeft" }}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-
-                          {/* Reference lines for performance thresholds */}
-                          <ReferenceLine x={75} stroke="#ef4444" strokeDasharray="5 5" />
-                          <ReferenceLine y={75} stroke="#ef4444" strokeDasharray="5 5" />
-                          <ReferenceLine x={90} stroke="#10b981" strokeDasharray="5 5" />
-                          <ReferenceLine y={90} stroke="#10b981" strokeDasharray="5 5" />
-
-                          <Scatter
-                            name="Pelajar"
-                            data={getCurrentScatterData()}
-                            fill="#3b82f6"
-                            onClick={handleScatterClick}
-                          >
-                            {getCurrentScatterData().map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  highlightedStudent === entry.id
-                                    ? "#ef4444"
-                                    : entry.average >= 90
-                                      ? "#10b981"
-                                      : entry.average < 75
-                                        ? "#f59e0b"
-                                        : "#3b82f6"
-                                }
-                                style={{ cursor: "pointer" }}
-                              />
-                            ))}
-                          </Scatter>
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Scatter Plot Legend */}
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Panduan Graf:</h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                          <span>Prestasi Tinggi (≥90%)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                          <span>Prestasi Sederhana</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                          <span>Perlu Perhatian ({"<75%"})</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                          <span>Dipilih/Disorot</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">
-                        Garis rujukan: Merah (75%) dan Hijau (90%) menunjukkan ambang prestasi
-                      </p>
+                      <ScatterPlot
+                        data={attendanceData}
+                        comparison={selectedSubjectComparison}
+                        onPointClick={(studentId) => setHighlightedStudent(studentId)}
+                        highlightedStudent={highlightedStudent}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -524,57 +312,6 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Navigation Guide */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-blue-900 mb-3">Navigation Guide</h3>
-                <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
-                  <div>
-                    <p className="font-medium mb-2">Student Management:</p>
-                    <ul className="space-y-1 ml-4">
-                      <li>
-                        • <strong>Maklumat Pelajar</strong> - View and manage student information
-                      </li>
-                      <li>
-                        • <strong>Kehadiran</strong> - Track student attendance
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">System Management:</p>
-                    <ul className="space-y-1 ml-4">
-                      <li>
-                        • <strong>Maklumat Fasi</strong> - Manage facilitator information
-                      </li>
-                      <li>
-                        • <strong>Pengurusan</strong> - System administration
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">Reports & Analysis:</p>
-                    <ul className="space-y-1 ml-4">
-                      <li>
-                        • <strong>Maklumat Terperinci</strong> - Detailed student analysis
-                      </li>
-                      <li>
-                        • <strong>Laporan</strong> - Generate comprehensive reports
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">Communication:</p>
-                    <ul className="space-y-1 ml-4">
-                      <li>
-                        • <strong>Notifikasi</strong> - View student registration alerts
-                      </li>
-                      <li>
-                        • <strong>Logout</strong> - Sign out of system
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
             </>
           )}
         </div>

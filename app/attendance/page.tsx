@@ -22,6 +22,11 @@ interface AttendanceRecord {
   robotic: boolean
 }
 
+interface DailyAttendanceEntry {
+  date: string
+  records: AttendanceRecord[]
+}
+
 const subjects = [
   { code: "bm", name: "Bahasa Malaysia", color: "bg-blue-100 text-blue-800" },
   { code: "bi", name: "Bahasa Inggeris", color: "bg-green-100 text-green-800" },
@@ -35,31 +40,36 @@ export default function Kehadiran() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [isSaving, setIsSaving] = useState(false)
 
-  // Load students from localStorage on component mount
+  // Load students and attendance for selected date on component mount or date change
   useEffect(() => {
-    const loadStudents = () => {
+    const loadData = () => {
       if (typeof window !== "undefined") {
         const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
         setStudents(savedStudents)
+
+        const allDailyRecords: DailyAttendanceEntry[] = JSON.parse(
+          localStorage.getItem("daily_attendance_records") || "[]",
+        )
+        const currentDayRecord = allDailyRecords.find((entry) => entry.date === selectedDate)
+
+        if (currentDayRecord) {
+          setAttendance(currentDayRecord.records)
+        } else {
+          // Initialize attendance for new date or if no record exists
+          setAttendance(
+            savedStudents.map((student: Student) => ({
+              studentId: student.id,
+              bm: true,
+              bi: true,
+              math: true,
+              robotic: true,
+            })),
+          )
+        }
       }
     }
-    loadStudents()
-  }, [])
-
-  // Initialize attendance when students are loaded
-  useEffect(() => {
-    if (students.length > 0) {
-      setAttendance(
-        students.map((student) => ({
-          studentId: student.id,
-          bm: true,
-          bi: true,
-          math: true,
-          robotic: true,
-        })),
-      )
-    }
-  }, [students])
+    loadData()
+  }, [selectedDate])
 
   const toggleAttendance = (studentId: number, subject: keyof Omit<AttendanceRecord, "studentId">) => {
     setAttendance((prev) =>
@@ -69,7 +79,28 @@ export default function Kehadiran() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate saving
+
+    if (typeof window !== "undefined") {
+      const allDailyRecords: DailyAttendanceEntry[] = JSON.parse(
+        localStorage.getItem("daily_attendance_records") || "[]",
+      )
+
+      const newDailyEntry: DailyAttendanceEntry = {
+        date: selectedDate,
+        records: attendance,
+      }
+
+      const existingIndex = allDailyRecords.findIndex((entry) => entry.date === selectedDate)
+
+      if (existingIndex !== -1) {
+        allDailyRecords[existingIndex] = newDailyEntry
+      } else {
+        allDailyRecords.push(newDailyEntry)
+      }
+
+      localStorage.setItem("daily_attendance_records", JSON.stringify(allDailyRecords))
+    }
+
     setTimeout(() => {
       setIsSaving(false)
       alert(`Kehadiran untuk tarikh ${selectedDate} berjaya disimpan!`)
@@ -82,6 +113,15 @@ export default function Kehadiran() {
 
   const getAttendanceStats = () => {
     const totalStudents = students.length
+    if (totalStudents === 0) {
+      return subjects.map((subject) => ({
+        subject: subject.name,
+        present: 0,
+        absent: 0,
+        percentage: 0,
+      }))
+    }
+
     const stats = subjects.map((subject) => {
       const presentCount = attendance.filter(
         (record) => record[subject.code as keyof Omit<AttendanceRecord, "studentId">],

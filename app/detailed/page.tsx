@@ -6,20 +6,9 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts"
-import { FileText, Users, TrendingUp, BarChart3 } from "lucide-react"
+import { Users, TrendingUp, BarChart3, RefreshCw } from "lucide-react"
+import { ScatterPlot } from "@/components/ScatterPlot"
+import { PieChart } from "@/components/PieChart" // Import the PieChart component from components/PieChart.tsx
 
 interface Student {
   id: number
@@ -35,8 +24,19 @@ interface AttendanceData {
   bi: number
   math: number
   robotic: number
-  totalAttendance: number
-  averageAttendance: number
+  totalAttendance: number // Sum of all subject percentages
+  averageAttendance: number // Average of all subject percentages
+}
+
+interface DailyAttendanceEntry {
+  date: string
+  records: {
+    studentId: number
+    bm: boolean
+    bi: boolean
+    math: boolean
+    robotic: boolean
+  }[]
 }
 
 const subjects = [
@@ -46,17 +46,20 @@ const subjects = [
   { code: "robotic", name: "Robotik", color: "#f59e0b" },
 ]
 
-const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
+const PIE_COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
 
 export default function MaklumatTerperinci() {
   const [students, setStudents] = useState<Student[]>([])
-  const [selectedStudent, setSelectedStudent] = useState<string>("")
   const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<string>("")
+  const [selectedSubjectComparison, setSelectedSubjectComparison] = useState<string>("bm-bi") // For ScatterPlot
+  const [highlightedStudent, setHighlightedStudent] = useState<number | null>(null) // For ScatterPlot
+  const [refreshTrigger, setRefreshTrigger] = useState(0) // New state to trigger data refresh
 
   useEffect(() => {
     loadStudents()
     generateAttendanceData()
-  }, [])
+  }, [refreshTrigger]) // Depend on refreshTrigger
 
   const loadStudents = () => {
     if (typeof window !== "undefined") {
@@ -69,32 +72,61 @@ export default function MaklumatTerperinci() {
     if (typeof window === "undefined") {
       return [] as AttendanceData[]
     }
-    const savedStudents = JSON.parse(localStorage.getItem("students") || "[]")
+    const savedStudents: Student[] = JSON.parse(localStorage.getItem("students") || "[]")
+    const allDailyRecords: DailyAttendanceEntry[] = JSON.parse(localStorage.getItem("daily_attendance_records") || "[]")
 
-    // Generate sample attendance data for each student
-    const attendanceData: AttendanceData[] = savedStudents.map((student: Student) => {
-      // Generate random attendance percentages for each subject (70-100%)
-      const bm = Math.floor(Math.random() * 31) + 70
-      const bi = Math.floor(Math.random() * 31) + 70
-      const math = Math.floor(Math.random() * 31) + 70
-      const robotic = Math.floor(Math.random() * 31) + 70
+    const calculatedAttendanceData: AttendanceData[] = savedStudents.map((student) => {
+      let totalBmClasses = 0
+      let attendedBmClasses = 0
+      let totalBiClasses = 0
+      let attendedBiClasses = 0
+      let totalMathClasses = 0
+      let attendedMathClasses = 0
+      let totalRoboticClasses = 0
+      let attendedRoboticClasses = 0
 
-      const totalAttendance = bm + bi + math + robotic
-      const averageAttendance = Math.round(totalAttendance / 4)
+      allDailyRecords.forEach((dailyEntry) => {
+        const studentRecord = dailyEntry.records.find((rec) => rec.studentId === student.id)
+        if (studentRecord) {
+          totalBmClasses++
+          if (studentRecord.bm) attendedBmClasses++
+          totalBiClasses++
+          if (studentRecord.bi) attendedBiClasses++
+          totalMathClasses++
+          if (studentRecord.math) attendedMathClasses++
+          totalRoboticClasses++
+          if (studentRecord.robotic) attendedRoboticClasses++
+        }
+      })
+
+      const bmPercentage = totalBmClasses > 0 ? (attendedBmClasses / totalBmClasses) * 100 : 0
+      const biPercentage = totalBiClasses > 0 ? (attendedBiClasses / totalBiClasses) * 100 : 0
+      const mathPercentage = totalMathClasses > 0 ? (attendedMathClasses / totalMathClasses) * 100 : 0
+      const roboticPercentage = totalRoboticClasses > 0 ? (attendedRoboticClasses / totalRoboticClasses) * 100 : 0
+
+      const totalAttendance = bmPercentage + biPercentage + mathPercentage + roboticPercentage
+      const averageAttendance = totalAttendance / 4
 
       return {
         studentId: student.id,
         studentName: student.nama,
-        bm,
-        bi,
-        math,
-        robotic,
-        totalAttendance,
-        averageAttendance,
+        bm: Math.round(bmPercentage),
+        bi: Math.round(biPercentage),
+        math: Math.round(mathPercentage),
+        robotic: Math.round(roboticPercentage),
+        totalAttendance: Math.round(totalAttendance),
+        averageAttendance: Math.round(averageAttendance),
       }
     })
 
-    setAttendanceData(attendanceData)
+    setAttendanceData(calculatedAttendanceData)
+    // If no student is selected, or the previously selected student is no longer in the list, select the first one
+    if (!selectedStudent && calculatedAttendanceData.length > 0) {
+      setSelectedStudent(calculatedAttendanceData[0].studentId.toString())
+    } else if (selectedStudent && !calculatedAttendanceData.some((s) => s.studentId.toString() === selectedStudent)) {
+      // If selected student is no longer available, reset selection
+      setSelectedStudent(calculatedAttendanceData.length > 0 ? calculatedAttendanceData[0].studentId.toString() : "")
+    }
   }
 
   const getSelectedStudentData = () => {
@@ -102,65 +134,31 @@ export default function MaklumatTerperinci() {
     return attendanceData.find((data) => data.studentId.toString() === selectedStudent)
   }
 
-  const getPieChartData = () => {
+  // The getPieChartData is no longer directly used by the PieChart component from components/PieChart.tsx
+  // as that component expects an array of AttendanceData and calculates its own averages.
+  // However, we still need it for the summary section below the chart.
+  const getPieChartSummaryData = () => {
     const studentData = getSelectedStudentData()
     if (!studentData) return []
 
     return [
-      { name: "Bahasa Malaysia", value: studentData.bm, color: COLORS[0] },
-      { name: "Bahasa Inggeris", value: studentData.bi, color: COLORS[1] },
-      { name: "Matematik", value: studentData.math, color: COLORS[2] },
-      { name: "Robotik", value: studentData.robotic, color: COLORS[3] },
+      { name: "Bahasa Malaysia", value: studentData.bm, color: PIE_COLORS[0] },
+      { name: "Bahasa Inggeris", value: studentData.bi, color: PIE_COLORS[1] },
+      { name: "Matematik", value: studentData.math, color: PIE_COLORS[2] },
+      { name: "Robotik", value: studentData.robotic, color: PIE_COLORS[3] },
     ]
   }
 
-  const getScatterData = () => {
-    const studentData = getSelectedStudentData()
-    if (!studentData) return []
-
-    return [
-      { subject: "BM", kehadiran: studentData.bm, fullName: "Bahasa Malaysia" },
-      { subject: "BI", kehadiran: studentData.bi, fullName: "Bahasa Inggeris" },
-      { subject: "Math", kehadiran: studentData.math, fullName: "Matematik" },
-      { subject: "Robotik", kehadiran: studentData.robotic, fullName: "Robotik" },
-    ]
-  }
-
-  const getOverallStats = () => {
-    if (attendanceData.length === 0) return { avgBM: 0, avgBI: 0, avgMath: 0, avgRobotic: 0 }
-
-    const totals = attendanceData.reduce(
-      (acc, student) => ({
-        bm: acc.bm + student.bm,
-        bi: acc.bi + student.bi,
-        math: acc.math + student.math,
-        robotic: acc.robotic + student.robotic,
-      }),
-      { bm: 0, bi: 0, math: 0, robotic: 0 },
-    )
-
-    const count = attendanceData.length
-    return {
-      avgBM: Math.round(totals.bm / count),
-      avgBI: Math.round(totals.bi / count),
-      avgMath: Math.round(totals.math / count),
-      avgRobotic: Math.round(totals.robotic / count),
+  // Set highlighted student for scatter plot when selected student changes
+  useEffect(() => {
+    if (selectedStudent) {
+      setHighlightedStudent(Number.parseInt(selectedStudent))
+    } else {
+      setHighlightedStudent(null)
     }
-  }
+  }, [selectedStudent])
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-semibold">{`${label}`}</p>
-          <p className="text-blue-600">{`Kehadiran: ${payload[0].value}%`}</p>
-        </div>
-      )
-    }
-    return null
-  }
-
-  const stats = getOverallStats()
+  const selectedStudentAttendanceData = getSelectedStudentData()
 
   return (
     <DashboardLayout>
@@ -201,80 +199,21 @@ export default function MaklumatTerperinci() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={generateAttendanceData} variant="outline">
-                  <TrendingUp className="h-4 w-4 mr-2" />
+                <Button onClick={() => setRefreshTrigger((prev) => prev + 1)} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh Data
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Overall Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Purata BM</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.avgBM}%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Purata BI</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.avgBI}%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Purata Math</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats.avgMath}%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-orange-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Purata Robotik</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats.avgRobotic}%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {students.length === 0 ? (
             <Card className="shadow-lg">
               <CardContent className="p-8 text-center">
                 <div className="text-gray-500 mb-4">
-                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold mb-2">Tiada Data Pelajar</h3>
-                  <p className="text-sm">Sila tambah pelajar melalui bahagian "Maklumat Pelajar" terlebih dahulu.</p>
+                  <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-semibold mb-2">Tiada Data Kehadiran</h3>
+                  <p className="text-sm">Sila tambah pelajar terlebih dahulu untuk melihat analisis kehadiran.</p>
                 </div>
                 <Button
                   onClick={() => (typeof window !== "undefined" ? (window.location.href = "/students") : null)}
@@ -298,44 +237,39 @@ export default function MaklumatTerperinci() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Pie Chart */}
+              {/* Student-Specific Pie Chart */}
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-center">
-                    Graf Pai Kehadiran - {getSelectedStudentData()?.studentName}
+                    Graf Pai Kehadiran - {selectedStudentAttendanceData?.studentName}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={getPieChartData()}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, value }) => `${name}: ${value}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {getPieChartData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => [`${value}%`, "Kehadiran"]} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    {selectedStudentAttendanceData ? (
+                      <PieChart
+                        data={[selectedStudentAttendanceData]} // Pass the selected student's data in an array
+                        colors={PIE_COLORS}
+                        onSegmentClick={(subject) => {
+                          console.log(
+                            `Clicked on subject: ${subject} for student ${selectedStudentAttendanceData.studentName}`,
+                          )
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-gray-500">
+                        Tiada data kehadiran untuk dipaparkan.
+                      </div>
+                    )}
                   </div>
 
                   {/* Pie Chart Summary */}
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-semibold text-gray-900 mb-2">Ringkasan Kehadiran:</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      {getPieChartData().map((item, index) => (
+                      {getPieChartSummaryData().map((item, index) => (
                         <div key={index} className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }}></div>
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }}></div>
                           <span>
                             {item.name}: {item.value}%
                           </span>
@@ -343,79 +277,53 @@ export default function MaklumatTerperinci() {
                       ))}
                     </div>
                     <div className="mt-2 pt-2 border-t">
-                      <p className="font-medium">Purata Keseluruhan: {getSelectedStudentData()?.averageAttendance}%</p>
+                      <p className="font-medium">
+                        Purata Keseluruhan: {selectedStudentAttendanceData?.averageAttendance}%
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Connected Scatter Graph (Line Chart) */}
+              {/* Student-Specific Scatter Plot (similar to dashboard) */}
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-center">
-                    Graf Garis Kehadiran - {getSelectedStudentData()?.studentName}
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Korelasi Kehadiran Subjek - {selectedStudentAttendanceData?.studentName}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={getScatterData()}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 20,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="subject" tick={{ fontSize: 12 }} interval={0} />
-                        <YAxis
-                          domain={[0, 100]}
-                          tick={{ fontSize: 12 }}
-                          label={{ value: "Kehadiran (%)", angle: -90, position: "insideLeft" }}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Line
-                          type="monotone"
-                          dataKey="kehadiran"
-                          stroke="#3b82f6"
-                          strokeWidth={3}
-                          dot={{ fill: "#3b82f6", strokeWidth: 2, r: 6 }}
-                          activeDot={{ r: 8, stroke: "#3b82f6", strokeWidth: 2 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="mb-4">
+                    <Select value={selectedSubjectComparison} onValueChange={setSelectedSubjectComparison}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pilih perbandingan subjek" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bm-bi">Bahasa Malaysia vs Bahasa Inggeris</SelectItem>
+                        <SelectItem value="math-robotic">Matematik vs Robotik</SelectItem>
+                        <SelectItem value="bm-math">Bahasa Malaysia vs Matematik</SelectItem>
+                        <SelectItem value="bi-robotic">Bahasa Inggeris vs Robotik</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-
-                  {/* Line Chart Analysis */}
+                  <div className="h-80">
+                    <ScatterPlot
+                      data={attendanceData} // Use all students' data
+                      comparison={selectedSubjectComparison}
+                      onPointClick={(studentId) => setSelectedStudent(studentId.toString())} // Select student on click
+                      highlightedStudent={highlightedStudent}
+                    />
+                  </div>
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-900 mb-2">Analisis Prestasi:</h4>
-                    <div className="text-sm space-y-1">
-                      {(() => {
-                        const data = getScatterData()
-                        const highest = data.reduce((prev, current) =>
-                          prev.kehadiran > current.kehadiran ? prev : current,
-                        )
-                        const lowest = data.reduce((prev, current) =>
-                          prev.kehadiran < current.kehadiran ? prev : current,
-                        )
-                        return (
-                          <>
-                            <p>
-                              <strong>Subjek Terbaik:</strong> {highest.fullName} ({highest.kehadiran}%)
-                            </p>
-                            <p>
-                              <strong>Subjek Perlu Diperbaiki:</strong> {lowest.fullName} ({lowest.kehadiran}%)
-                            </p>
-                            <p>
-                              <strong>Perbezaan:</strong> {highest.kehadiran - lowest.kehadiran}% antara tertinggi dan
-                              terendah
-                            </p>
-                          </>
-                        )
-                      })()}
-                    </div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Analisis Korelasi:</h4>
+                    <p className="text-sm text-gray-700">
+                      Graf ini menunjukkan hubungan antara kehadiran pelajar dalam dua subjek yang dipilih. Titik yang
+                      disorot adalah pelajar yang sedang dipilih.
+                    </p>
+                    <p className="text-sm text-gray-700 mt-2">
+                      Titik di kuadran kanan atas menunjukkan prestasi kehadiran yang baik dalam kedua-dua subjek.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

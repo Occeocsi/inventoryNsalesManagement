@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Users, User, Settings, ArrowLeft, Building } from "lucide-react"
+import { Users, User, Settings, ArrowLeft, Building } from 'lucide-react'
 
 interface Secretariat {
   id: number
@@ -13,6 +13,7 @@ interface Secretariat {
   bahagian: string
   secretariatId: string
   createdAt: string
+  gambar?: string // Added gambar field for Base64 image
 }
 
 interface OrganizationalChartProps {
@@ -110,9 +111,13 @@ export function OrganizationalChart({ onBack }: OrganizationalChartProps) {
     <div className="bg-white rounded-lg border-2 border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="text-center">
         {/* Profile Picture Placeholder */}
-        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
-          <User className="h-8 w-8 text-gray-400" />
-        </div>
+        {member.gambar ? (
+          <img src={member.gambar || "/placeholder.svg"} alt={member.nama} className="h-16 w-16 rounded-full object-cover mx-auto mb-3" />
+        ) : (
+          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+            <User className="h-8 w-8 text-gray-400" />
+          </div>
+        )}
 
         {/* Member Info */}
         <h3 className="font-semibold text-gray-900 mb-2">{member.nama}</h3>

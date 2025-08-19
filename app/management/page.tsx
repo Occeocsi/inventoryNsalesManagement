@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Upload, FileText, User, GraduationCap, Briefcase, Award, Settings, Users, BookOpen } from "lucide-react"
+import { Upload, FileText, User, GraduationCap, Briefcase, Award, Settings, Users, BookOpen } from 'lucide-react'
 import { StaffList } from "@/components/staff-list"
 import { SecretariatList } from "@/components/secretariat-list"
 import { TeacherSelection } from "@/components/teacher-selection"
@@ -23,7 +23,7 @@ export default function Pengurusan() {
   const [viewMode, setViewMode] = useState<ViewMode>("selection")
   const [userType, setUserType] = useState<string>("")
   const [teacherFormData, setTeacherFormData] = useState({
-    gambar: null as File | null,
+    gambar: null as string | null, // Changed to string for Base64
     nama: "",
     jawatanGred: "",
     kelayakanAkademik: "",
@@ -31,7 +31,7 @@ export default function Pengurusan() {
     pengalamanKerja: "",
   })
   const [secretariatFormData, setSecretariatFormData] = useState({
-    gambar: null as File | null,
+    gambar: null as string | null, // Changed to string for Base64
     nama: "",
     jawatan: "",
     bahagian: "",
@@ -44,7 +44,16 @@ export default function Pengurusan() {
     setUserType(userSession.type || "admin")
   }, [])
 
-  const handleTeacherFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = (error) => reject(error)
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleTeacherFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (
       file &&
@@ -53,13 +62,21 @@ export default function Pengurusan() {
         file.type === "image/jpeg" ||
         file.type === "image/jpg")
     ) {
-      setTeacherFormData((prev) => ({ ...prev, gambar: file }))
+      try {
+        const base64String = await readFileAsBase64(file)
+        setTeacherFormData((prev) => ({ ...prev, gambar: base64String }))
+      } catch (error) {
+        console.error("Error reading file:", error)
+        alert("Gagal membaca fail. Sila cuba lagi.")
+        setTeacherFormData((prev) => ({ ...prev, gambar: null }))
+      }
     } else {
       alert("Sila muat naik fail PDF, PNG, atau JPG sahaja")
+      setTeacherFormData((prev) => ({ ...prev, gambar: null }))
     }
   }
 
-  const handleSecretariatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSecretariatFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (
       file &&
@@ -68,9 +85,17 @@ export default function Pengurusan() {
         file.type === "image/jpeg" ||
         file.type === "image/jpg")
     ) {
-      setSecretariatFormData((prev) => ({ ...prev, gambar: file }))
+      try {
+        const base64String = await readFileAsBase64(file)
+        setSecretariatFormData((prev) => ({ ...prev, gambar: base64String }))
+      } catch (error) {
+        console.error("Error reading file:", error)
+        alert("Gagal membaca fail. Sila cuba lagi.")
+        setSecretariatFormData((prev) => ({ ...prev, gambar: null }))
+      }
     } else {
       alert("Sila muat naik fail PDF, PNG, atau JPG sahaja")
+      setSecretariatFormData((prev) => ({ ...prev, gambar: null }))
     }
   }
 
@@ -93,6 +118,7 @@ export default function Pengurusan() {
       pengalamanKerja: staffData.pengalamanKerja,
       staffId: `STF${String(existingStaff.length + 1).padStart(4, "0")}`,
       createdAt: new Date().toISOString(),
+      gambar: staffData.gambar, // Save the Base64 image string
     }
     existingStaff.push(newStaff)
     localStorage.setItem("staff", JSON.stringify(existingStaff))
@@ -109,6 +135,7 @@ export default function Pengurusan() {
       bahagian: secretariatData.bahagian,
       secretariatId: `SEC${String(existingSecretariat.length + 1).padStart(4, "0")}`,
       createdAt: new Date().toISOString(),
+      gambar: secretariatData.gambar, // Save the Base64 image string
     }
     existingSecretariat.push(newSecretariat)
     localStorage.setItem("secretariat", JSON.stringify(existingSecretariat))
@@ -277,7 +304,6 @@ export default function Pengurusan() {
                     </CardHeader>
                     <CardContent className="p-6">
                       <form onSubmit={handleSecretariatSubmit} className="space-y-6">
-                        {/* Keep all existing form fields */}
                         {/* Gambar Upload */}
                         <div className="space-y-2">
                           <Label
@@ -297,10 +323,18 @@ export default function Pengurusan() {
                               required
                             />
                             <label htmlFor="secretariat-gambar" className="cursor-pointer">
-                              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                              {secretariatFormData.gambar ? (
+                                <img
+                                  src={secretariatFormData.gambar || "/placeholder.svg"}
+                                  alt="Preview"
+                                  className="mx-auto mb-2 h-24 w-24 object-cover rounded-full"
+                                />
+                              ) : (
+                                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                              )}
                               <p className="text-sm text-gray-600">
                                 {secretariatFormData.gambar
-                                  ? secretariatFormData.gambar.name
+                                  ? "Fail dipilih: " + (secretariatFormData.gambar.length > 50 ? "..." + secretariatFormData.gambar.substring(secretariatFormData.gambar.length - 40) : "Gambar dimuat naik")
                                   : "Klik untuk muat naik fail PDF, PNG, atau JPG"}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">PDF, PNG, JPG sahaja, maksimum 10MB</p>
@@ -456,10 +490,18 @@ export default function Pengurusan() {
                             required
                           />
                           <label htmlFor="teacher-gambar" className="cursor-pointer">
-                            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                            {teacherFormData.gambar ? (
+                              <img
+                                src={teacherFormData.gambar || "/placeholder.svg"}
+                                alt="Preview"
+                                className="mx-auto mb-2 h-24 w-24 object-cover rounded-full"
+                              />
+                            ) : (
+                              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                            )}
                             <p className="text-sm text-gray-600">
                               {teacherFormData.gambar
-                                ? teacherFormData.gambar.name
+                                ? "Fail dipilih: " + (teacherFormData.gambar.length > 50 ? "..." + teacherFormData.gambar.substring(teacherFormData.gambar.length - 40) : "Gambar dimuat naik")
                                 : "Klik untuk muat naik fail PDF, PNG, atau JPG"}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">PDF, PNG, JPG sahaja, maksimum 10MB</p>

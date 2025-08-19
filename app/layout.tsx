@@ -14,5 +14,5 @@ export default function RootLayout({
 }
 
 export const metadata = {
-      generator: 'v0.dev'
+      generator: 'v0.app'
     };

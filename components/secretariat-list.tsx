@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Users, User, Briefcase, Settings, Trash2, Edit } from "lucide-react"
+import { Users, User, Briefcase, Settings, Trash2, Edit } from 'lucide-react'
 
 interface Secretariat {
   id: number
@@ -13,6 +13,7 @@ interface Secretariat {
   bahagian: string
   secretariatId: string
   createdAt: string
+  gambar?: string // Added gambar field for Base64 image
 }
 
 export function SecretariatList() {
@@ -107,6 +108,13 @@ export function SecretariatList() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
+                    {member.gambar ? (
+                      <img src={member.gambar || "/placeholder.svg"} alt={member.nama} className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
                     <h3 className="text-lg font-semibold text-gray-900">{member.nama}</h3>
                     <Badge variant="outline">{member.secretariatId}</Badge>
                     <Badge className={getJawatanColor(member.jawatan)}>{member.jawatan}</Badge>
